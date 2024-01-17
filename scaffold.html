@@ -7,9 +7,10 @@
 </head>
 <body>
     <section id="Delay Calculator">
+        <!--flow is gonna be complicated with nested flex and grid elements.-->
         <div>
             <!--2 cols-->
-            <div>
+            <div class="flex spacebetween">
                 <!--Widget: Job Selector
                     - Main Jobs
                         - MNK
@@ -37,6 +38,7 @@
                         - SAM
                         - DNC
                 -->
+                <!--these will be whipped out into a component and packed into an object.-->
                 <select name="mainjob" id="mainjob">
                     <option value="mnk">Monk</option>
                     <option value="nin">Ninja - Dual Wield</option>
@@ -49,10 +51,20 @@
                     <option value="drk">Dark Knight</option>
                     <option value="rat">Ranged Attack</option>
                 </select>
+                /
                 <select name="subjob" id="subjob">
-                    
+                    <option value="nin">Ninja</option>
+                    <option value="mnk">Monk</option>
+                    <option value="pup">Puppetmaster</option>
+                    <option value="sam">Samurai</option>
+                    <option value="dnc">Dancer</option>
                 </select>
                 <!--Widget: Base Delay-->
+                <label for="base_dela"></label>
+                <input type="number" name="base_delay_mh" id="base_delay_mh" min="1" max="999">
+                <!--This second input will be disabled unless main is DNC/NIN/THF or Sub is DNC/NIN, or if BLU
+                    has the correct spells slotted to get access to dualwield.-->
+                <input type="number" name="base_delay_oh" id="base_delay_oh" min="1" max="999" disabled>
             </div>
             <div>
                 <!--Widget: Total Delay
@@ -115,6 +127,35 @@
                     After this step, we apply the bonus from Store TP. Formula:
                     floor(base_tp) + floor(base_tp * (store_tp/100))
                 -->
+            </div>
+        </div>
+        <div class="flex grow">
+            <div id="equipmenthaste">
+                <!--This will be turned into a react component, PHP is just fast an easy to use as shorthand.-->
+                <?php
+                    for ($i = 1; $i < 16; $i++) {
+                        echo "<input type="number" id="eh_$i" min="0" max="16"/>"
+                    }
+                ?>
+                <script type="text/javascript">
+                    totalHaste = 0
+                    for(i=0; i<16; i++) {
+                        totalHaste += Number(document.getElementById('eh_'+i).value)
+                    }
+                </script>
+            </div>
+            <div id="storetp">
+                <?php
+                    for($i=0; i<16; i++) {
+                        echo "<input type="number" id="stp_$i" min="0" max="16">"
+                    }
+                ?>
+                <script type="text/javascript">
+                    totalSTP = 0
+                    for(i=0;i<16;i++) {
+                        totalSTP += Number(document.getElementById('stp_'+i).value)
+                    }
+                </script>    
             </div>
         </div>
     </section>
