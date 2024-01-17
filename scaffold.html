@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <section id="Delay Calculator">
+        <div>
+            <!--2 cols-->
+            <div>
+                <!--Widget: Job Selector
+                    - Main Jobs
+                        - MNK
+                            - Martial Arts VII (-200 base delay)
+                        - NIN (DW)
+                        - PUP
+                            - Martial Arts IV (-140 base delay)
+                            - Opt. Kenkonken (-55 base delay (MA))
+                        - Other H2H
+                        - SAM
+                            - Hasso
+                            - 30 base STP + (merits * 2)
+                        - DNC
+                            - Haste Samba (50/1024 JA haste)
+                        - BLU
+                            - Source lacks space for DW spell effects, add?
+                        - THF
+                        - DRK
+                            - Last Resort (150/1024 JA haste + merits up to 256 (cap))
+                        - Ranged
+                    - Sub Jobs
+                        - NIN (DW)
+                        - MNK
+                        - PUP
+                        - SAM
+                        - DNC
+                -->
+                <!--Widget: Base Delay-->
+            </div>
+            <div>
+                <!--Widget: Total Delay
+                    To the reader: be aware that many of the numbers used in these calculations may seem stupid
+                    It is important that they be exactly as specified, as final values will be incorrect if they are rounded or "fixed".
+
+                    The delay calculation uses a factor of divisor/1024. 
+                    - The maximum amount of haste you can get from gear is 256/1024
+                        - 1% of haste on the tooltip is equal to precisely 10/1024 haste
+                            - This means you need approx. 26% Equipment haste per tooltip to get full delay reduction.
+                    - The maximum amount of magical haste you can get is 448/1024
+                    - The maximum amount of Job Ability Haste you can get is 256/1024
+                    
+                    Calculation:
+                        Time per swing (in seconds) = Base Delay ÷ 60 (This isn't precisely correct, but it's more useful this way.)
+                        This value is then reduced by your total haste modifier, to a max of 80%. This means that if you have 
+                            A lot of Dual Wield, Martial Arts, or are using certain pieces of direct delay-reducing gear,
+                            You can have entire segments of your haste/delay reduction that do nothing to actually make you attack faster.
+                        For the first run, Martial Arts won't be calculated since it's complicated, it will be implemented later in the project.
+                -->
+                <!--Widget: TP per hit
+                    This value will require the modified delay from the total delay section.
+                        this includes weapon base delay, dual wield, martial arts, and delay reduction -% equipment
+                    Dual wield delay for this calculion is as follows:
+                        (Weapon 1 Delay + Weapon 2 Delay)(1-Dual Wield %)
+                        -------------------------------------------------
+                                                2
+                    After this value is determined, Base TP per hit is calculated with the following formulae depending on delay.
+                    - <= 180
+                             (Delay - 180) * 63
+                        61 + ------------------
+                                    360
+                    - 181 - 540
+                             (Delay - 180) * 88
+                        61 + ------------------
+                                    360
+                    - 541 - 630
+                              (Delay - 540) * 20
+                        149 + ------------------
+                                     360
+                    - 631 - 720
+                              (Delay - 630) * 28
+                        154 + ------------------
+                                     360
+                    - 721 - 900
+                              (Delay - 720) * 24
+                        161 + ------------------
+                                     360                    
+                    - > 901
+                              (Delay - 900) * 28
+                        173 + ------------------
+                                     360
+
+                    IMPORTANT: These values are all *floor()ed* before being passed to *any* other calculations.
+                    These formulae may seem random, but they were given to the players of the game by the development team.
+                    
+                    This calculation should be fast enough. If it's not, it can be rewritten in C and compiled to wasm for 
+                        faster execution.
+                    
+                    After this step, we apply the bonus from Store TP. Formula:
+                    floor(base_tp) + floor(base_tp * (store_tp/100))
+                -->
+            </div>
+        </div>
+    </section>
+</body>
+</html>
