@@ -1,0 +1,21 @@
+#Delay\ Calculator {
+  display: flex;
+  flex-direction: column;
+}
+
+.equipmentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 3em);
+  & input[type=number] {
+    appearance: textfield;
+    text-align: center;
+    font-size: 2em;
+  }
+}
+
+.flex {
+  display:flex;
+}
+.spacebetween {
+  justify-content: space-between;
+}
