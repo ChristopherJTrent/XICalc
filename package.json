@@ -1,0 +1,11 @@
+{
+  "name": "XICalc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:ChristopherJTrent/XICalc.git",
+  "author": "ChristopherJtrent <ChristopherJtrent@outlook.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
