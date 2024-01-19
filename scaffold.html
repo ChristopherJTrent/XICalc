@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <title>Document</title>
+    <script src="./haste.js"></script>
+    <script src="./tp_per_hit.js"></script>
+    <script src="./helpers.js"></script>
 </head>
-<body>
-    <section id="Delay Calculator">
+<body onload="loadHandler()">
+    <section class="materialCard" id="DelayCalculator">
         <!--flow is gonna be complicated with nested flex and grid elements.-->
         <div class="flex spacebetween">
             <!--2 cols-->
-            <div class="flex spacebetween">
+            <h3>Jobs</h3> <hr/>
+            <div class="horizontalFlex">
                 <!--Widget: Job Selector
                     - Main Jobs
                         - MNK
@@ -40,41 +44,55 @@
                         - DNC
                 -->
                 <!--these will be whipped out into a component and packed into an object.-->
-                <select name="mainjob" id="mainjob">
-                    <option value="naj">Unlisted Job</option>
-                    <option value="mnk">Monk</option>
-                    <option value="nin">Ninja - Dual Wield</option>
-                    <option value="pup">Puppetmaster</option>
-                    <option value="h2h">Other Hand-To-Hand</option>
-                    <option value="sam">Samurai</option>
-                    <option value="dnc">Dancer</option>
-                    <option value="blu">Blue Mage</option>
-                    <option value="thf">Thief</option>
-                    <option value="drk">Dark Knight</option>
-                    <option value="rat">Ranged Attack</option>
-                </select>
-                /
-                <select name="subjob" id="subjob">
-                    <option value="naj">Unlisted Job</option>
-                    <option value="nin">Ninja</option>
-                    <option value="mnk">Monk</option>
-                    <option value="pup">Puppetmaster</option>
-                    <option value="sam">Samurai</option>
-                    <option value="dnc">Dancer</option>
-                </select>
-                <!--Widget: Base Delay-->
-                <label for="base_delay"></label>
-                <input type="number" name="base_delay_mh" id="base_delay_mh" min="1" max="999">
-                <!--This second input will be disabled unless main is DNC/NIN/THF or Sub is DNC/NIN, or if BLU
-                    has the correct spells slotted to get access to dualwield.-->
-                <input type="number" name="base_delay_oh" id="base_delay_oh" min="1" max="999" disabled>
+                <div class="jobSelector">
+                    <label for="mainjob">Main<br/>Job</label>
+                    <select name="mainjob" id="mainjob">
+                        <option value="naj">Unlisted Job</option>
+                        <option value="mnk">Monk</option>
+                        <option value="nin">Ninja - Dual Wield</option>
+                        <option value="pup">Puppetmaster</option>
+                        <option value="h2h">Other Hand-To-Hand</option>
+                        <option value="sam">Samurai</option>
+                        <option value="dnc">Dancer</option>
+                        <option value="blu">Blue Mage</option>
+                        <option value="thf">Thief</option>
+                        <option value="drk">Dark Knight</option>
+                        <option value="rat">Ranged Attack</option>
+                    </select>
+                </div>
+                <span class="bigText">/</span>
+                <div class="jobSelector">
+                    <label for="subjob">Support<br/>Job</label>
+                    <select name="subjob" id="subjob">
+                        <option value="naj">Unlisted SubJob</option>
+                        <option value="nin">Ninja</option>
+                        <option value="mnk">Monk</option>
+                        <option value="pup">Puppetmaster</option>
+                        <option value="sam">Samurai</option>
+                        <option value="dnc">Dancer</option>
+                    </select>
+                </div>
+            </div>
+            <h3>Delay</h3><hr>
+            <div class="materialCard horizontalFlex">
+                <span id="mainhand_container" class="verticalFlex centered">
+                    <!--Widget: Base Delay-->
+                    <label for="base_delay_mh" class="justifyCenter">Main Hand</label>
+                    <input class="threeDigit" type="number" name="base_delay_mh" id="base_delay_mh" min="1" max="999" value="240" onchange="handleTPCalculationUpdate()">
+                </span>
+                <span class="verticalFlex centered">
+                    <!--This second input will be disabled unless main is DNC/NIN/THF or Sub is DNC/NIN, or if BLU
+                        has the correct spells slotted to get access to dualwield.-->
+                    <label for="base_delay_oh" class="justifyCenter">Off Hand</label>
+                    <input class="threeDigit" type="number" name="base_delay_oh" id="base_delay_oh" min="1" max="999" disabled>
+                </span>
             </div>
             <div>
                 <!--Widget: Total Delay
                     To the reader: be aware that many of the numbers used in these calculations may seem stupid
                     It is important that they be exactly as specified, as final values will be incorrect if they are rounded or "fixed".
 
-                    The delay calculation uses a factor of divisor/1024. 
+                    The delay calculation uses a factor of x/1024. 
                     - The maximum amount of haste you can get from gear is 256/1024
                         - 1% of haste on the tooltip is equal to precisely 10/1024 haste
                             - This means you need approx. 26% Equipment haste per tooltip to get full delay reduction.
@@ -88,12 +106,11 @@
                             You can have entire segments of your haste/delay reduction that do nothing to actually make you attack faster.
                         For the first run, Martial Arts won't be calculated since it's complicated, it will be implemented later in the project.
                 -->
-                <span id="totaldelay">0.0</span> (<span id="delaySeconds">0</span> seconds) (<span id="overcapFeedback"></span>)
                 <!--Widget: TP per hit
                     This value will require the modified delay from the total delay section.
                         this includes weapon base delay, dual wield, martial arts, and delay reduction -% equipment
                     Dual wield delay for this calculion is as follows:
-                        (Weapon 1 Delay + Weapon 2 Delay)(1-Dual Wield %)
+                        (Weapon 1 Delay + Weapon 2 Delay)(1-Dual Wie %)
                         -------------------------------------------------
                                                 2
                     After this value is determined, Base TP per hit is calculated with the following formulae depending on delay.
@@ -133,63 +150,61 @@
                 -->
             </div>
         </div>
-        <div class="flex grow">
+        <div class="horizontalFlex grow">
             <p>Equipment Haste</p>
             <div id="equipmenthaste" class="equipmentGrid">
                 
-                <input type="number" id="eh_0" min="0" max="16">
-                <input type="number" id="eh_1" min="0" max="16">
-                <input type="number" id="eh_2" min="0" max="16">
-                <input type="number" id="eh_3" min="0" max="16">
-                <input type="number" id="eh_4" min="0" max="16">
-                <input type="number" id="eh_5" min="0" max="16">
-                <input type="number" id="eh_6" min="0" max="16">
-                <input type="number" id="eh_7" min="0" max="16">
-                <input type="number" id="eh_8" min="0" max="16">
-                <input type="number" id="eh_9" min="0" max="16">
-                <input type="number" id="eh_10" min="0" max="16">
-                <input type="number" id="eh_11" min="0" max="16">
-                <input type="number" id="eh_12" min="0" max="16">
-                <input type="number" id="eh_13" min="0" max="16">
-                <input type="number" id="eh_14" min="0" max="16">
-                <input type="number" id="eh_15" min="0" max="16">
-                <script type="text/javascript">
-                    totalHaste = 0
-                    for(i=0; i<16; i++) {
-                        totalHaste += Number(document.getElementById('eh_'+i).value)
-                    }
-                </script>
+                <input type="number" id="eh_1" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_2" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_3" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_4" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_5" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_6" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_0" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_7" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_8" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_9" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_10" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_11" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_12" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_13" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_14" min="0" max="16" onchange="handleEHChange()">
+                <input type="number" id="eh_15" min="0" max="16" onchange="handleEHChange()">
             </div>
-            <p>Store TP:</p>
+            <p>Store TP: <span id="storetp_total">0</span></p>
             <div id="storetp" class="equipmentGrid">
-                
-                <input type="number" id="stp_0" min="0" max="16">
-                <input type="number" id="stp_1" min="0" max="16">
-                <input type="number" id="stp_2" min="0" max="16">
-                <input type="number" id="stp_3" min="0" max="16">
-                <input type="number" id="stp_4" min="0" max="16">
-                <input type="number" id="stp_5" min="0" max="16">
-                <input type="number" id="stp_6" min="0" max="16">
-                <input type="number" id="stp_7" min="0" max="16">
-                <input type="number" id="stp_8" min="0" max="16">
-                <input type="number" id="stp_9" min="0" max="16">
-                <input type="number" id="stp_10" min="0" max="16">
-                <input type="number" id="stp_11" min="0" max="16">
-                <input type="number" id="stp_12" min="0" max="16">
-                <input type="number" id="stp_13" min="0" max="16">
-                <input type="number" id="stp_14" min="0" max="16">
-                <input type="number" id="stp_15" min="0" max="16">
-                <script type="text/javascript">
-                    totalSTP = 0
-                    for(i=0;i<16;i++) {
-                        totalSTP += Number(document.getElementById('stp_'+i).value)
-                    }
-                </script>    
-            </div>
-            <div id="wstp">
-
+                <input type="number" id="stp_0" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_1" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_2" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_3" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_4" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_5" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_6" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_7" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_8" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_9" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_10" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_11" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_12" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_13" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_14" min="0" max="30" onchange="checkStoreTP()">
+                <input type="number" id="stp_15" min="0" max="30" onchange="checkStoreTP()"> 
             </div>
         </div>
     </section>
+    <!--This will be a data display sidebar with an absolute position.-->
+    <aside class="feedbackSidebar materialCard">
+        <div>Total Delay: <span id="totalDelay"></span> (<span id="secondsPerSwing"></span>)</div>
+        <label for="hasteMeter">Total Haste: <span id="hFeedback">0/800 (0% / 80%)</span></label>
+        <meter class="styledMeter overcap" id="hasteMeter" min="0" low="800" optimum="800" high="810" max="960"></meter>
+        <label for="equipHasteMeter">Equipment Haste: <span id="ehFeedback">0/256 (0% / 25%)</span></label>
+        <meter class="styledMeter" id="equipHasteMeter" min="0" max="256" optimum="256" value="0"></meter>
+        <label for="magicalHasteMeter">Magical Haste: <span id="mhFeedback">0/448 (0% / 44%)</span></label>
+        <meter class="styledMeter" id="magicalHasteMeter" min="0" max="448" optimum="448" value="0"></meter>
+        <label for="jobabilityHasteMeter">Job Ability Haste: <span id="jahFeedback">0/256 (0% / 25%)</span></label>
+        <meter class="styledMeter" id="jobabilityHasteMeter" min="0" max=""></meter>
+
+        <div><span id="tp_per_hit">0</span> TP per hit (<span id="hits_to_weaponskill">0</span> hits to 1000 TP)</div>
+    </aside>
 </body>
 </html>
