@@ -1,4 +1,0 @@
-function loadHandler() {
-    handleEHChange()
-    checkStoreTP()
-}

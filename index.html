@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Document</title>
+    <script src="./js/haste.js"></script>
+    <script src="./js/helpers.js"></script>
+    <script src="./js/tp_per_hit.js"></script>
+    <script src="./js/jobs.js"></script>
+    <script src="./js/multiattack.js"> </script>
+</head>
+<body onload="loadHandler()">
+    <section class="materialCard" id="DelayCalculator">
+        <!--flow is gonna be complicated with nested flex and grid elements.-->
+        <div class="flex spacebetween">
+            <!--2 cols-->
+            <h3>Jobs</h3> <hr/>
+            <div class="horizontalFlex spaceBet">
+                <!--Widget: Job Selector
+                    - Main Jobs
+                        - MNK
+                            - Martial Arts VII (-200 base delay)
+                        - NIN (DW)
+                        - PUP
+                            - Martial Arts IV (-140 base delay)
+                            - Opt. Kenkonken (-55 base delay (MA))
+                        - Other H2H
+                        - SAM
+                            - Hasso
+                            - 30 base STP + (merits * 2)
+                        - DNC
+                            - Haste Samba (50/1024 JA haste)
+                        - BLU
+                            - Source lacks space for DW spell effects, add?
+                        - THF
+                        - DRK
+                            - Last Resort (150/1024 JA haste + merits up to 256 (cap))
+                        - Ranged
+                    - Sub Jobs
+                        - NIN (DW)
+                        - MNK
+                        - PUP
+                        - SAM
+                        - DNC
+                -->
+                <!--these will be whipped out into a component and packed into an object.-->
+                <div class="jobSelector">
+                    <label for="mainjob">Main<br/>Job</label>
+                    <select name="mainjob" id="mainjob">
+                        <option value="naj">Unlisted Job</option>
+                        <option value="mnk">Monk</option>
+                        <option value="nin">Ninja - Dual Wield</option>
+                        <option value="pup">Puppetmaster</option>
+                        <option value="h2h">Other Hand-To-Hand</option>
+                        <option value="sam">Samurai</option>
+                        <option value="dnc">Dancer</option>
+                        <option value="blu">Blue Mage</option>
+                        <option value="thf">Thief</option>
+                        <option value="drk">Dark Knight</option>
+                        <option value="rat">Ranged Attack</option>
+                    </select>
+                </div>
+                <div class="jobSelector">
+                    <label for="subjob">Support<br/>Job</label>
+                    <select name="subjob" id="subjob">
+                        <option value="naj">Unlisted SubJob</option>
+                        <option value="nin">Ninja</option>
+                        <option value="mnk">Monk</option>
+                        <option value="pup">Puppetmaster</option>
+                        <option value="sam">Samurai</option>
+                        <option value="dnc">Dancer</option>
+                    </select>
+                </div>
+            </div>
+            <h3>Delay</h3><hr>
+            <div class="materialCard horizontalFlex">
+                <span id="mainhand_container" class="verticalFlex centered">
+                    <!--Widget: Base Delay-->
+                    <label for="base_delay_mh" class="justifyCenter">Main Hand</label>
+                    <input class="threeDigit" type="number" name="base_delay_mh" id="base_delay_mh" min="1" max="999" value="240" onchange="updateBaseDelay()">
+                </span>
+                <span class="verticalFlex centered">
+                    <!--This second input will be disabled unless main is DNC/NIN/THF or Sub is DNC/NIN, or if BLU
+                        has the correct spells slotted to get access to dualwield.-->
+                    <label for="base_delay_oh" class="justifyCenter">Off Hand</label>
+                    <input class="threeDigit" type="number" name="base_delay_oh" id="base_delay_oh" min="1" max="999" disabled>
+                </span>
+            </div>
+            <div>
+                <!--Widget: Total Delay
+                    To the reader: be aware that many of the numbers used in these calculations may seem stupid
+                    It is important that they be exactly as specified, as final values will be incorrect if they are rounded or "fixed".
+
+                    The delay calculation uses a factor of x/1024. 
+                    - The maximum amount of haste you can get from gear is 256/1024
+                        - 1% of haste on the tooltip is equal to precisely 10/1024 haste
+                            - This means you need approx. 26% Equipment haste per tooltip to get full delay reduction.
+                    - The maximum amount of magical haste you can get is 448/1024
+                    - The maximum amount of Job Ability Haste you can get is 256/1024
+                    
+                    Calculation:
+                        Time per swing (in seconds) = Base Delay ÷ 60 (This isn't precisely correct, but it's more useful this way.)
+                        This value is then reduced by your total haste modifier, to a max of 80%. This means that if you have 
+                            A lot of Dual Wield, Martial Arts, or are using certain pieces of direct delay-reducing gear,
+                            You can have entire segments of your haste/delay reduction that do nothing to actually make you attack faster.
+                        For the first run, Martial Arts won't be calculated since it's complicated, it will be implemented later in the project.
+                -->
+                <!--Widget: TP per hit
+                    This value will require the modified delay from the total delay section.
+                        this includes weapon base delay, dual wield, martial arts, and delay reduction -% equipment
+                    Dual wield delay for this calculion is as follows:
+                        (Weapon 1 Delay + Weapon 2 Delay)(1-Dual Wie %)
+                        -------------------------------------------------
+                                                2
+                    After this value is determined, Base TP per hit is calculated with the following formulae depending on delay.
+                    - <= 180
+                             (Delay - 180) * 63
+                        61 + ------------------
+                                    360
+                    - 181 - 540
+                             (Delay - 180) * 88
+                        61 + ------------------
+                                    360
+                    - 541 - 630
+                              (Delay - 540) * 20
+                        149 + ------------------
+                                     360
+                    - 631 - 720
+                              (Delay - 630) * 28
+                        154 + ------------------
+                                     360
+                    - 721 - 900
+                              (Delay - 720) * 24
+                        161 + ------------------
+                                     360                    
+                    - > 901
+                              (Delay - 900) * 28
+                        173 + ------------------
+                                     360
+
+                    IMPORTANT: These values are all *floor()ed* before being passed to *any* other calculations.
+                    These formulae may seem random, but they were given to the players of the game by the development team.
+                    
+                    This calculation should be fast enough. If it's not, it can be rewritten in C and compiled to wasm for 
+                        faster execution.
+                    
+                    After this step, we apply the bonus from Store TP. Formula:
+                    floor(base_tp) + floor(base_tp * (store_tp/100))
+                -->
+            </div>
+        </div>
+        <h3>Equipment</h3>
+        <hr>
+        <div class="horizontalFlex spaceAround">
+            <div class="verticalFlex centered">
+                <p>Haste +<span id="hastePercentage"></span>%</p>
+                <div id="equipmenthaste" class="equipmentGrid">
+                    
+                    <input type="number" id="eh_1" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_2" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_3" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_4" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_5" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_6" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_0" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_7" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_8" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_9" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_10" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_11" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_12" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_13" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_14" min="0" max="16" onchange="handleEHChange()">
+                    <input type="number" id="eh_15" min="0" max="16" onchange="handleEHChange()">
+                </div>
+            </div>
+            <div class="verticalFlex centered">
+            <p>Store TP: <span id="storetp_total">0</span></p>
+                <div id="storetp" class="equipmentGrid">
+                    <input type="number" id="stp_0" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_1" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_2" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_3" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_4" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_5" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_6" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_7" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_8" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_9" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_10" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_11" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_12" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_13" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_14" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="stp_15" min="0" max="30" onchange="checkStoreTP()"> 
+                </div>
+            </div>
+            <div class="verticalFlex centered">
+                <p>Dual Wield: <span id="dualwield_total">0</span></p>
+                <div id="dualwield" class="equipmentGrid">
+                    <input type="number" id="dw_0" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_1" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_2" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_3" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_4" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_5" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_6" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_7" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_8" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_9" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_10" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_11" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_12" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_13" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_14" min="0" max="30" onchange="checkStoreTP()">
+                    <input type="number" id="dw_15" min="0" max="30" onchange="checkStoreTP()"> 
+                </div>
+            </div>
+            <div class="verticalFlex centered">
+                <p>Double Attack: <span id="doubleattack_total">0</span>%</p>
+                    <div id="doubleattack" class="equipmentGrid">
+                        <input type="number" id="da_0" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_1" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_2" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_3" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_4" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_5" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_6" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_7" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_8" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_9" min="0" max="30"  onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_10" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_11" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_12" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_13" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_14" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')">
+                        <input type="number" id="da_15" min="0" max="30" onchange="updateMultiAttackPercentage('da', 'doubleattack')"> 
+                    </div>
+            </div>
+            <div class="verticalFlex centered">
+                <p>Triple Attack: <span id="tripleattack_total">0</span>%</p>
+                <div id="tripleattack" class="equipmentGrid">
+                    <input type="number" id="ta_0" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_1" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_2" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_3" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_4" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_5" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_6" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_7" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_8" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_9" min="0" max="30"  onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_10" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_11" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_12" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_13" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_14" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')">
+                    <input type="number" id="ta_15" min="0" max="30" onchange="updateMultiAttackPercentage('ta', 'tripleattack')"> 
+                </div>
+            </div>
+            <div class="verticalFlex centered">
+                <p>Quadruple Attack: <span id="quadrupleattack_total">0</span>%</p>
+                <div id="quadrupleattack" class="equipmentGrid">
+                    <input type="number" id="qa_0" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_1" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_2" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_3" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_4" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_5" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_6" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_7" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_8" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_9" min="0" max="30"  onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_10" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_11" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_12" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_13" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_14" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')">
+                    <input type="number" id="qa_15" min="0" max="30" onchange="updateMultiAttackPercentage('qa', 'quadrupleattack')"> 
+                </div>
+            </div>
+        </div>
+        <h3>Magic Effects</h3>
+        <hr>
+        <div class="horizontalFlex spaceAround">
+            <div class="verticalFlex">
+                <h4>White/Blue Magic</h4>
+                <hr>
+                <label for="NoHaste"><input type="radio" name="magicalHasteEffect" id="NoHaste" value="0" checked>No Magical Haste</label>
+                <label for="Haste1"><input id="Haste1" type="radio" value="150" name="magicalHasteEffect">Haste</label>
+                <label for="Haste2"><input id="Haste1" type="radio" value="307" name="magicalHasteEffect">Haste II</label>
+                <label for="Hastega1"><input id="Hastega1" type="radio" value="153" name="magicalHasteEffect">Hastega</label>
+                <label for="Hastega2"><input id="Hastega2" type="radio" value="307" name="magicalHasteEffect">Hastega II</label>
+                <label for="Refueling"><input id="Refueling" type="radio" value="102" name="magicalHasteEffect">Refueling</label>
+                <label for="AnimatingWail"><input type="radio" name="magicalHasteEffect" id="AnimatingWail" value="150">Animating Wail</label>
+                <label for="ErraticFlutter"><input type="radio" name="magicalHasteEffect" id="ErraticFlutter" value="307">Erratic Flutter</label>
+                <hr>
+                <label for="MightyGuardCheckbox"><input type="checkbox" name="mightyGuardEffect" id="MightyGuardCheckbox">Mighty Guard</label>
+                <label for="embravaCheckbox"><input type="checkbox" name="embravaEffect" id="embravaCheckbox">Embrava</label>
+            </div>
+            <div>
+                <h4>Bard Music</h4>
+                <hr>
+
+            </div>
+            <div>
+                <h4>Geomancy</h4>
+                <hr>
+            </div>
+        </div>
+    </section>
+    <!--This will be a data display sidebar with an absolute position.-->
+    <aside class="feedbackSidebar materialCard">
+        <div>Total Delay: <span id="totalDelay"></span> (<span id="secondsPerSwing"></span> seconds per round)</div>
+        <div>Average Attacks per round: <span id="attacksPerRound"></span></div>
+        <label for="hasteMeter">Total Haste: <span id="hFeedback">0/800 (0% / 80%)</span></label>
+        <meter class="styledMeter overcap" id="hasteMeter" min="0" low="800" optimum="800" high="810" max="960"></meter>
+        <label for="equipHasteMeter">Equipment Haste: <span id="ehFeedback">0/256 (0% / 25%)</span></label>
+        <meter class="styledMeter" id="equipHasteMeter" min="0" max="256" optimum="256" value="0"></meter>
+        <label for="magicalHasteMeter">Magical Haste: <span id="mhFeedback">0/448 (0% / 44%)</span></label>
+        <meter class="styledMeter" id="magicalHasteMeter" min="0" max="448" optimum="448" value="0"></meter>
+        <label for="jobabilityHasteMeter">Job Ability Haste: <span id="jahFeedback">0/256 (0% / 25%)</span></label>
+        <meter class="styledMeter" id="jobabilityHasteMeter" min="0" max=""></meter>
+
+        <div><span id="tp_per_hit">0</span> TP per hit (<span id="hits_to_weaponskill">0</span> hits to 1000 TP)</div>
+    </aside>
+</body>
+</html>

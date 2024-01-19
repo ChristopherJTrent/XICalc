@@ -68,11 +68,6 @@ body {
     margin-bottom: 1em;
 }
 
-.jobSelector {
-    width: 49%;
-
-}
-
 #DelayCalculator {
     display: flex;
     flex-direction: column;
@@ -137,14 +132,22 @@ select {
     font-family: var(--font-family);
     box-sizing: border-box;
     &[type=number] {
+        -webkit-appearance: none;
         appearance: textfield;
         text-align: center;
-        &::-webkit-inner-spin-button,&::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        &:hover {
+        };
     }
 }
+
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button,
+input[type=number] {
+    -webkit-appearance: none;
+    -moz-appearance: textfield !important;
+    appearance: none;
+    margin:0;
+}
+
 .threeDigit {
     width: 3em;
     padding: 1px 0px;
@@ -175,13 +178,8 @@ select {
     text-align: center;
 }
 
-h3, h4 {
-    &:has(+ hr){
-        margin-bottom: 0px;
-        &+hr{
-            margin-top:0;
-        }
-    }
+h3:has(+ hr) {
+    margin-bottom: 0px;
 }
 #mainhand_container {
     margin-right: .5em;
